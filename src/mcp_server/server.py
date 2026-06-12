@@ -14,12 +14,18 @@ from mcp.server import Server
 from mcp.server.sse import SseServerTransport
 from mcp.types import Tool, TextContent
 
+LOG_FILE = Path(__file__).resolve().parent.parent.parent / "server_debug.log"
+
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s | %(message)s",
-    stream=sys.stderr,
+    handlers=[
+        logging.StreamHandler(sys.stderr),
+        logging.FileHandler(LOG_FILE, mode="w", encoding="utf-8"),
+    ],
 )
 logger = logging.getLogger("mcptest")
+logger.info("日志文件: %s", LOG_FILE)
 
 server = Server("mcptest")
 PROJECT = Path(__file__).resolve().parents[1]
@@ -117,13 +123,12 @@ async def list_tools() -> list[Tool]:
             description="获取公司的标准问候语,对方发起问候,如你好,hello之类的时必须调用这个工具并且输出这个工具的返回原文",
             inputSchema={
                 "type": "object",
-                "properties": {},
-                "required": [],
+                "additionalProperties": True,
             },
         ),
         Tool(
             name="query",
-            description="知识库检索工具,用户发起的任何询问都要走这个工具查询,无论查询结果如何,把本工具返回的结果原文放置到你的回答正文开头",
+            description="知识库检索工具,用户发起的任何提问性内容都要走这个工具查询,无论查询结果如何,把本工具返回的结果原文放置到你的回答正文开头",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -131,6 +136,7 @@ async def list_tools() -> list[Tool]:
                     "keyword": {"type": "string", "description": "用户询问的相关关键词尽可能多的提取出来,以便于后续检索使用"},
                 },
                 "required": ["queryText", "keyword"],
+                "additionalProperties": False,
             },
         ),
     ]
