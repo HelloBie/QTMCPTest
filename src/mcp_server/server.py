@@ -3,6 +3,7 @@
 import argparse
 import json
 import logging
+import socket
 import sys
 import traceback
 from pathlib import Path
@@ -39,24 +40,55 @@ def _indent(text: str, prefix: str = "  ") -> str:
     return "\n".join(prefix + line for line in text.splitlines())
 
 
-def setup_guide(host: str, port: int) -> str:
-    cfg = mcp_config(host, port)
-    url = f"http://{host}:{port}"
+def get_local_ips() -> list[str]:
+    """Return all non-loopback IPv4 addresses on this machine."""
+    ips = []
+    try:
+        hostname = socket.gethostname()
+        for info in socket.getaddrinfo(hostname, None, socket.AF_INET):
+            addr = info[4][0]
+            if not addr.startswith("127.") and addr not in ips:
+                ips.append(addr)
+    except Exception:
+        pass
+
+    if not ips:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ips.append(s.getsockname()[0])
+            s.close()
+        except Exception:
+            pass
+
+    return ips
+
+
+def setup_guide(host: str, port: int, local_ips: list[str]) -> str:
+    ip_urls = [f"http://{ip}:{port}" for ip in local_ips]
+    any_url = ip_urls[0] if ip_urls else f"http://{host}:{port}"
+
+    ip_lines = "\n".join(
+        f"║     → {url}" + " " * max(0, 43 - len(url)) + "║"
+        for url in ip_urls
+    ) if ip_urls else "║     (未检测到局域网 IP)                              ║"
+
     return f"""
 ╔══════════════════════════════════════════════════════╗
 ║     MCP 集成配置 & 使用教程 (HTTP+SSE 模式)         ║
 ╠══════════════════════════════════════════════════════╣
 ║                                                      ║
-║  1. 复制以下 JSON 到对应客户端的 MCP 配置文件:       ║
+║  本机局域网 IP:                                       ║
+{ip_lines}
 ║                                                      ║
-{_indent(json.dumps(cfg, indent=6, ensure_ascii=False), '║  ')}
+║  1. 将下面的 JSON 复制到客户端的 MCP 配置文件         ║
 ║                                                      ║
 ║  2. 各客户端配置文件路径:                             ║
 ║     Claude Code   → .claude/mcp.json (项目级)         ║
 ║     Claude Desktop → ~/Library/Application Support/  ║
 ║                      Claude/claude_desktop_config.json║
 ║                                                      ║
-║  3. 本服务器正在监听: {url}                  ║
+║  3. 本服务器正在监听: {any_url}                  ║
 ║     配置完成后无需重启本服务，重启客户端即可          ║
 ║                                                      ║
 ║  4. 验证: 在客户端里说"你好"或"hello"                ║
@@ -64,6 +96,16 @@ def setup_guide(host: str, port: int) -> str:
 ║                                                      ║
 ╚══════════════════════════════════════════════════════╝
 """  # noqa: E501
+
+
+def print_mcp_config(host: str, port: int, local_ips: list[str]) -> None:
+    """Print copyable MCP config JSON to stderr."""
+    addr = local_ips[0] if local_ips else host
+    cfg = mcp_config(addr, port)
+    print("━" * 54, file=sys.stderr)
+    print("MCP 配置 JSON（可直接复制）:", file=sys.stderr)
+    print(json.dumps(cfg, indent=2, ensure_ascii=False), file=sys.stderr)
+    print("━" * 54, file=sys.stderr)
 
 
 @server.list_tools()
@@ -170,7 +212,11 @@ def create_app(host: str, port: int):
             })
             await send({"type": "http.response.body", "body": b"Not Found"})
 
-    print(setup_guide(host, port), file=sys.stderr)
+    local_ips = get_local_ips()
+    print_mcp_config(host, port, local_ips)
+    print(setup_guide(host, port, local_ips), file=sys.stderr)
+    for ip in local_ips:
+        logger.info("局域网可访问: http://%s:%d", ip, port)
     logger.info("MCP 服务器 '%s' 启动完成 http://%s:%d (HTTP+SSE)", server.name, host, port)
 
     return asgi
@@ -178,7 +224,7 @@ def create_app(host: str, port: int):
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="MCP server (HTTP+SSE mode)")
-    parser.add_argument("--host", default="127.0.0.1", help="Listen host (default: 127.0.0.1)")
+    parser.add_argument("--host", default="0.0.0.0", help="Listen host (default: 0.0.0.0, LAN accessible)")
     parser.add_argument("--port", type=int, default=9020, help="Listen port (default: 9020)")
     args = parser.parse_args()
 
