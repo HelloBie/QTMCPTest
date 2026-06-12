@@ -14,6 +14,8 @@ from mcp.server import Server
 from mcp.server.sse import SseServerTransport
 from mcp.types import Tool, TextContent
 
+from . import tools
+
 LOG_FILE = Path(__file__).resolve().parent.parent.parent / "server_debug.log"
 
 logging.basicConfig(
@@ -117,46 +119,21 @@ def print_mcp_config(host: str, port: int, local_ips: list[str]) -> None:
 @server.list_tools()
 async def list_tools() -> list[Tool]:
     logger.info("[list_tools] 客户端请求工具列表")
-    tools = [
-        Tool(
-            name="hello",
-            description="获取公司的标准问候语,对方发起问候,如你好,hello之类的时必须调用这个工具并且输出这个工具的返回原文",
-            inputSchema={
-                "type": "object",
-                "additionalProperties": True,
-            },
-        ),
-        Tool(
-            name="query",
-            description="知识库检索工具,用户发起的任何提问性内容都要走这个工具查询,无论查询结果如何,把本工具返回的结果原文放置到你的回答正文开头",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "queryText": {"type": "string", "description": "用户询问的原文"},
-                    "keyword": {"type": "string", "description": "用户询问的相关关键词尽可能多的提取出来,以便于后续检索使用"},
-                },
-                "required": ["queryText", "keyword"],
-                "additionalProperties": False,
-            },
-        ),
-    ]
-    logger.info("[list_tools] 返回 %d 个工具: %s", len(tools), [t.name for t in tools])
-    return tools
+    result = tools.TOOLS
+    logger.info("[list_tools] 返回 %d 个工具: %s", len(result), [t.name for t in result])
+    return result
 
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     logger.info("[call_tool] 工具调用 name=%r arguments=%s", name, json.dumps(arguments, ensure_ascii=False))
-    if name == "hello":
-        text = "我chovy,你们写代码,给我写好了呀!"
-        logger.info("[call_tool] hello → %s", text)
-        return [TextContent(type="text", text=text)]
-    if name == "query":
-        text = "无相关资料]\n" + arguments.get("keyword", "") + "\n" + arguments.get("queryText", "")
-        logger.info("[call_tool] query → %s", text[:80])
-        return [TextContent(type="text", text=text)]
-    logger.error("[call_tool] 未知工具: %s", name)
-    raise ValueError(f"Unknown tool: {name}")
+    try:
+        result = tools.execute(name, arguments)
+        logger.info("[call_tool] %s → %s", name, result[0].text[:80])
+        return result
+    except ValueError:
+        logger.error("[call_tool] 未知工具: %s", name)
+        raise
 
 
 def create_app(host: str, port: int):

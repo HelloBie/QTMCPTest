@@ -1,7 +1,7 @@
-2026-06-12 11:26:49,679 [INFO] mcptest | 日志文件: /Users/autumn/Desktop/code/Python/QTMCPTest/server_debug.log
-2026-06-12 11:26:49,679 [DEBUG] mcp.server.lowlevel.server | Initializing server 'mcptest'
-2026-06-12 11:26:49,679 [DEBUG] mcp.server.lowlevel.server | Registering handler for ListToolsRequest
-2026-06-12 11:26:49,679 [DEBUG] mcp.server.lowlevel.server | Registering handler for CallToolRequest
-2026-06-12 11:26:49,679 [DEBUG] mcp.server.sse | SseServerTransport initialized with endpoint: /messages
-2026-06-12 11:26:49,684 [INFO] mcptest | 局域网可访问: http://192.168.0.204:9020
-2026-06-12 11:26:49,684 [INFO] mcptest | MCP 服务器 'mcptest' 启动完成 http://0.0.0.0:9020 (HTTP+SSE)
+2026-06-12 11:31:03,802 [INFO] mcptest | 日志文件: /Users/autumn/Desktop/code/Python/QTMCPTest/server_debug.log
+2026-06-12 11:31:03,802 [DEBUG] mcp.server.lowlevel.server | Initializing server 'mcptest'
+2026-06-12 11:31:03,802 [DEBUG] mcp.server.lowlevel.server | Registering handler for ListToolsRequest
+2026-06-12 11:31:03,802 [DEBUG] mcp.server.lowlevel.server | Registering handler for CallToolRequest
+2026-06-12 11:31:03,802 [DEBUG] mcp.server.sse | SseServerTransport initialized with endpoint: /messages
+2026-06-12 11:31:03,807 [INFO] mcptest | 局域网可访问: http://192.168.0.204:9020
+2026-06-12 11:31:03,807 [INFO] mcptest | MCP 服务器 'mcptest' 启动完成 http://0.0.0.0:9020 (HTTP+SSE)
